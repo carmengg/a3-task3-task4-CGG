@@ -1,0 +1,95 @@
+---
+title: "Homework 3 - Task 4"
+author: "Carmen Galaz-García"
+date: "11/5/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)
+library(tidyverse)  # data wrangling
+library(janitor)    # clean names
+library(lubridate)  # date wrangling
+library(here)       # folder location 
+library(kableExtra) # nice tables
+
+urchins <- read_csv(here("data","urchins.csv"))
+urchins <- clean_names(urchins)    # change all-caps column names
+```
+
+## Data wrangling
+
+Selection of data corresponding to Naples Reef observations for purple urchins observed in January 2010 
+
+
+```{r}
+NPL_purple_Jan2010 <- urchins %>%    # copy data frame
+  mutate(new_date = mdy(date)) %>%   # create column with dates in Date class
+  select(!date) %>%                  # remove column with old dates
+  filter(site == "NAPL" &            # select Naples Reef site 
+           common_name == "Purple Urchin" &    # select Purple Urchins
+           month(new_date)==01 &     # select month = January 
+           year(new_date)==2010)     # select year = 2010
+```
+
+
+## Exploratory Data Visualization
+
+Histograms and QQ-plots for the size distribution for each of the treatments (Control and Annual) to assess normality. 
+
+```{r}
+ggplot(data= NPL_purple_Jan2010, aes(x=size))+
+  geom_histogram(bins = 10) +     # make histogram, update number of bins
+  facet_wrap(~treatment) +        # create one plot per treatment
+  labs(x="urchin diameter (cm)")  # updating x-axis label
+```
+
+```{r}
+ggplot(data = NPL_purple_Jan2010, aes(sample=size))+
+  geom_qq()+
+  facet_wrap(~treatment)
+```
+
+Looking at the QQ-plots we can say it is probable that the size distribution for both the anual and control groups are normally distributed, since the plot roughly follows the path of a straight line. However looking at the histograms we can see there is a slight bimodal behaviour in both groups, also present in the QQ-plots as there are are two fairly long horizontal accumulations of points in each group.
+
+
+## Descriptive statistics
+
+Table of descriptive statistics for both treatment groups
+including the mean, standard deviation, and sample size.    
+```{r}
+urchin_stats <- group_by(NPL_purple_Jan2010, treatment) %>%  # group previously selected data by treatment
+  summarize(mean_size = mean(size),    # get mean size
+            meadian_size=median(size), # get median size
+            sd_size = sd(size),        # get standard deviation
+            n =n())                    # get sample size
+
+urchin_stats %>% kable( col.names = c( "Treatment",            # column headers 
+                                       "Mean diameter (cm)", 
+                                       "Median size (cm)",
+                                       "Standard deviation (cm)",
+                                       "Sample size (n)" ) 
+                         ) %>% 
+   kable_styling(full_width = FALSE)
+```
+
+## Two-sample t-test
+
+In this section we perform a two-sample t-test to compare means between the two groups.
+
+```{r}
+# select size vector of annual treatment urchins
+annual_sample <- filter(NPL_purple_Jan2010, treatment == "ANNUAL") %>% 
+  pull(size) #extracts size columns as a vector
+
+# select size vector of no treatment (control) urchins
+control_sample <-filter(NPL_purple_Jan2010, treatment == "CONTROL") %>% 
+  pull(size)
+
+# two-sample t-test
+t.test(x=annual_sample, y=control_sample) 
+```
+Urchins coming from sites with annual treatment have a mean diameter length of 3.92 cm (rounded to two decimals) while urchins from sites with no treatment have a mean diameter length of 3.73 cm, the absolute difference between these two is 0.19cm. We can see too that annual treatment urchins are on average (3.916667-3.725806)/3.725806*100 = 5.122% bigger than no treatment urchins. On the other hand a two-sample t-test for these population gives a p-value of 0.2536, which indicates there is at least a 1/4 probability of drawing two samples with means having a difference of at least 0.19cm if they come from populations with the same mean. So we could say there is quite a big chance that these two samples come from populations that actually have the same mean, from which we could conclude that annual treatment probably does not affect the urchin’s size.
+
+
