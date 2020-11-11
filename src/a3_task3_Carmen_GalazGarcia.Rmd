@@ -1,0 +1,129 @@
+---
+title: "Homework 3 - Task 3"
+author: "Carmen Galaz-García"
+date: "11/5/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message = FALSE)  # all code chunks message=FALSE
+
+library(tidyverse)   # data wrangling
+library(here)        # reference folders withing project
+library(janitor)     # clean data
+library(kableExtra)  # create nice tables
+library(lubridate)   # wrangle dates
+
+urchins <- read.csv(here("data","urchins.csv"))  # read data
+urchins <- clean_names(urchins)                  # simplify data names
+```
+
+
+# 1. Size comparisons between purple and red urchins
+
+
+## Exploratory data visualization 
+The following graphs compare the distribution of urchin diameters (in cm) for purple urchin (*Strongylocentrotus purpuratus*) and red urchin (*Mesocentrotus franciscanus*) observed at 5 sites along the Santa Barbara coast.
+
+### Histograms 
+
+
+```{r}
+ggplot(data = urchins, aes(x=size)) +   # select data and variable
+  geom_histogram()+                     # do histogram
+  facet_wrap(~common_name, scales = "free_x")+ # facet according to common_name and choose each x-axis length individually
+  labs(x="Urchin diameter (cm)", y ="Count")   # update labels
+```
+
+### Boxplots
+```{r}
+ggplot(data=urchins, aes(x=common_name, y=size))+ # select data and variables
+  geom_boxplot()+        # do boxplot
+  labs( x="Common name", # update labels
+        y="Urchin diameter (cm)")
+```
+
+## Descriptive statistics table
+The table below contains the following statistics for purple and red urchins (ignoring site as a variable): mean, median, standard deviation, and sample size.
+
+```{r}
+urchins_stats <- urchins %>%           # copy all urchins data
+  group_by(common_name) %>%            # analyze each group separately
+  summarize(mean_size = mean(size),    # for each group calculate: size mean
+            meadian_size=median(size),      # size median
+            sd_size = sd(size),             # size standard deviation
+            n =n())                         # number of individuals
+
+# create table using kable
+urchins_stats %>% kable( col.names = c("Common name", 
+                                       "Mean diameter (cm)", 
+                                       "Median size (cm)",
+                                       "Standard deviation (cm)",
+                                       "Sample size (n)" ) 
+                         ) %>% 
+   kable_styling(full_width = FALSE)
+```
+
+### Analysis
+
+We can see in the histogram for purple urchins that their size is slightly positively skewed. In their boxplot we can further see that there is a long tail with possible outliers which have big diameter. 
+
+For red urchins we can see  there is a bit of a tail to the right but otherwise the distribution looks quite normal. This is also apparent in the boxplot showing more outliers with big diameter but otherwise a fairly symmetric box and whiskers. 
+ 
+We can see too that on average red urchins have a diameter (6.776489-4.469797)/4.469797* 100=51.6% bigger than that of a purple urchin. The absolute differences between the standard deviations of both populations is 0.7 cm, with red urchins presenting a greater variability, which is (1.891343-1.175264)/1.175264* 100 = 60.9% of that of purple urchins. 
+
+# 2. Exploring purple urchin counts
+
+### Wrangling data
+Using a piped sequence, we create a subset of the urchins data which only includes observations for purple urchins, has dates in class "Date", has a column wich only contains the year of the observation and adds a column with the full name of the observation site. 
+
+```{r}
+purple_urchins <- urchins %>%                   # assign dataset
+  filter(common_name == "Purple Urchin") %>%    # select rows corresponding to purple urchins
+  mutate(Year = year(mdy(date))) %>%            # create Year column 
+  mutate(site_full = case_when( site == "NAPL" ~ "Naples Reef",          # create column with complete names
+                                site == "AQUE" ~ "Arroyo Quemado Reef",
+                                site == "CARP" ~ "Carpinteria Reef",
+                                site == "MOHK" ~ "Mohawk Reed",
+                                site == "IVEE" ~ "Isla Vista Reef"))
+```
+ 
+
+
+### Summary table
+The table below shows the total number of purple urchins observed by site and year.
+
+```{r}
+purples_summary <- purple_urchins %>%  # starting with purple_urchins data 
+  count(site_full, Year)               # count # individuals in each site in a given year
+
+# create table
+purples_summary %>% kable(col.names = c("Site", "Year", "Sample size (n)")) %>% 
+  kable_styling(full_width = FALSE)
+
+```
+
+### Exploratory graph
+In the following graphs we see the change in the counts of purple urchins recorded at each site over time for the years included in the study.
+
+```{r}
+ggplot( data = purples_summary, aes(x=Year, y=n))+        # select data and variables
+  geom_line() +                                           # line+point to join the dots
+  geom_point() +
+  facet_wrap(~site_full, scales = "free_x") +             # facet by site
+  scale_x_continuous(breaks=2*(1004:1010))  +             # update x-axis ticks
+  labs(y="Number of urchins at site")
+
+```
+
+
+
+
+
+
+
+
+
+
+
